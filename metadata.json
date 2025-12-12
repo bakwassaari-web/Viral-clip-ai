@@ -1,0 +1,5 @@
+{
+  "name": "ViralClip AI",
+  "description": "A SaaS application to analyze transcripts and generate viral clips using Gemini and Claude AI models.",
+  "requestFramePermissions": []
+}
