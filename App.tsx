@@ -15,12 +15,18 @@ export default function App() {
 
   const [settings, setSettings] = useState<Settings>({
     model: 'gemini-3-pro-preview',
-    context: 'General Audience'
+    context: 'General Audience',
+    apiKey: '' // Default empty key
   });
 
   const handleGenerate = async () => {
     if (!transcript.trim()) {
       setError("Please enter a transcript.");
+      return;
+    }
+
+    if (!settings.apiKey || settings.apiKey.length < 10) {
+      setError("Please configure your Gemini API Key in the sidebar.");
       return;
     }
 
@@ -49,7 +55,6 @@ export default function App() {
       
       <SignedOut>
         <div className="h-screen flex flex-col items-center justify-center relative overflow-hidden">
-          {/* Ambient Glow Effects */}
           <div className="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-purple-500/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
           <div className="absolute bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none mix-blend-screen" />
           
@@ -73,17 +78,14 @@ export default function App() {
 
       <SignedIn>
         <div className="flex h-screen overflow-hidden">
-          {/* Ambient Glow Effects */}
           <div className="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-purple-500/20 blur-[120px] rounded-full pointer-events-none mix-blend-screen" />
           <div className="absolute bottom-0 left-0 -z-10 w-[400px] h-[400px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none mix-blend-screen" />
 
-          {/* Sidebar */}
           <SettingsSidebar 
             settings={settings}
             setSettings={setSettings}
           />
 
-          {/* Main Content */}
           <main className="flex-1 flex flex-col h-full overflow-hidden relative">
             <header className="flex-none p-8 border-b border-white/5 bg-black/20 backdrop-blur-md z-10 flex justify-between items-center">
               <div>
@@ -100,10 +102,8 @@ export default function App() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-              
               <div className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 shadow-2xl transition-all hover:border-white/20">
                 <div className="bg-black/40 rounded-xl p-5 space-y-5">
-                  
                   <div>
                     <label htmlFor="youtube-url" className="block text-sm font-semibold text-slate-300 mb-2 tracking-wide uppercase flex items-center gap-2">
                       <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
@@ -169,7 +169,6 @@ export default function App() {
               )}
 
               <ResultsGrid clips={clips} loading={loading} youtubeUrl={youtubeUrl} />
-              
             </div>
           </main>
         </div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export type AIModel = 
@@ -7,6 +8,7 @@ export type AIModel =
 export interface Settings {
   model: AIModel;
   context: string;
+  apiKey: string; // Added to track the user's API key globally
 }
 
 export interface Clip {
@@ -17,7 +19,6 @@ export interface Clip {
   reasoning: string;
 }
 
-// Props types for components
 export interface SettingsSidebarProps {
   settings: Settings;
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;

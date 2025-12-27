@@ -1,53 +1,52 @@
 
 import React, { useEffect, useState } from 'react';
 import { SettingsSidebarProps, AIModel } from '../types';
-import { Activity, Zap, ShieldCheck, BarChart3, Clock, Lock, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, Zap, ShieldCheck, BarChart3, Clock, Lock, Sliders, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 
 export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setSettings }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [secureToken, setSecureToken] = useState('');
+  const [showConfig, setShowConfig] = useState(false);
+  const [showKey, setShowKey] = useState(false);
 
-  // 1. On Load (useEffect): Load saved settings and tokens
+  // 1. On Load: Recover settings and the API key from localStorage
   useEffect(() => {
     const savedSettings = localStorage.getItem('viralclip-settings');
-    const savedToken = localStorage.getItem('workspace-secure-token');
+    const savedKey = localStorage.getItem('gemini_api_key');
     
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
-        if (parsed.model) {
-            setSettings(prev => ({ ...prev, ...parsed }));
-        }
+        setSettings(prev => ({ 
+          ...prev, 
+          ...parsed,
+          apiKey: savedKey || prev.apiKey // Prefer savedKey if it exists
+        }));
       } catch (e) {
         console.error("Failed to parse settings", e);
       }
-    }
-
-    if (savedToken) {
-      setSecureToken(savedToken);
+    } else if (savedKey) {
+      setSettings(prev => ({ ...prev, apiKey: savedKey }));
     }
 
     setIsLoaded(true);
   }, [setSettings]);
 
-  // 2. On Change: Automatically persist settings to localStorage
+  // 2. On Change: Automatically persist non-sensitive settings
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('viralclip-settings', JSON.stringify(settings));
+      const { apiKey, ...otherSettings } = settings;
+      localStorage.setItem('viralclip-settings', JSON.stringify(otherSettings));
+      // Specifically persist the API Key
+      localStorage.setItem('gemini_api_key', apiKey);
     }
   }, [settings, isLoaded]);
-
-  // Persist secure token (demonstrating the "Remember Me" logic for credentials)
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('workspace-secure-token', secureToken);
-    }
-  }, [secureToken, isLoaded]);
 
   const handleChange = (field: keyof typeof settings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
+
+  // Instant recognition check
+  const isKeyReady = settings.apiKey && settings.apiKey.length > 10;
 
   return (
     <aside className="w-80 bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 flex flex-col h-full flex-none z-20 overflow-hidden">
@@ -59,44 +58,55 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
             System Status
           </h2>
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-mono text-slate-300 uppercase">
-              Secure Link Active
+            <div className={`w-2 h-2 rounded-full ${isKeyReady ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+            <span className={`text-[10px] font-mono uppercase ${isKeyReady ? 'text-emerald-400' : 'text-red-400'}`}>
+              {isKeyReady ? 'Ready' : 'No Key'}
             </span>
           </div>
         </div>
         
-        {/* Advanced Config Toggle Button - Fixing the unresponsiveness */}
+        {/* Toggleable API Management Section */}
         <button 
-          onClick={() => setShowAdvanced(!showAdvanced)}
+          onClick={() => setShowConfig(!showConfig)}
           className={`w-full py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 border
-            ${showAdvanced 
+            ${showConfig 
               ? 'bg-white/10 border-white/20 text-white' 
               : 'bg-indigo-600 border-indigo-500 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
             }`}
         >
           <Sliders className="w-3 h-3" />
-          {showAdvanced ? 'Hide Config' : 'Configure Workspace'}
-          {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {showConfig ? 'Hide Config' : 'API Management'}
+          {showConfig ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
 
-        {/* 3. Input Box (Conditional Rendering): Controlled by showAdvanced state */}
-        {showAdvanced && (
+        {showConfig && (
           <div className="mt-4 bg-black/40 rounded-xl p-4 border border-white/10 space-y-3 animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">Deployment Token</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">Gemini API Key</span>
+              </div>
             </div>
-            {/* The Input Field Itself: password type, bound to state */}
-            <input
-              type="password"
-              value={secureToken}
-              onChange={(e) => setSecureToken(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full bg-black/60 text-slate-200 text-sm border border-white/10 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-slate-700"
-            />
-            <p className="text-[9px] text-slate-500 leading-relaxed italic">
-              * Secure tokens are persisted locally to enable workspace synchronization.
+            
+            <div className="relative group">
+              <input
+                type={showKey ? "text" : "password"}
+                value={settings.apiKey}
+                onChange={(e) => handleChange('apiKey', e.target.value)}
+                placeholder="Pasted key here..."
+                className="w-full bg-black/60 text-slate-200 text-xs border border-white/10 rounded-lg p-3 pr-10 focus:ring-1 focus:ring-indigo-500 outline-none transition-all placeholder-slate-700"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowKey(!showKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            
+            <p className="text-[9px] text-slate-500 leading-relaxed">
+              Keys are encrypted and saved locally in your browser. Never shared with our servers.
             </p>
           </div>
         )}
@@ -157,7 +167,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
            <Clock className="w-3 h-3" />
            <span className="text-[10px] font-mono uppercase tracking-tighter">Plan: Pro</span>
         </div>
-        <span className="text-[10px] text-slate-700 font-mono">v1.3.0-secure</span>
+        <span className="text-[10px] text-slate-700 font-mono">v1.4.0-secure</span>
       </div>
     </aside>
   );
