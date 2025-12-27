@@ -8,7 +8,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
   const [showConfig, setShowConfig] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
-  // 1. On Load: Recover settings and the API key from localStorage
+  // 1. Initial Load: Load settings and API key from persistence
   useEffect(() => {
     const savedSettings = localStorage.getItem('viralclip-settings');
     const savedKey = localStorage.getItem('gemini_api_key');
@@ -19,7 +19,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
         setSettings(prev => ({ 
           ...prev, 
           ...parsed,
-          apiKey: savedKey || prev.apiKey // Prefer savedKey if it exists
+          apiKey: savedKey || prev.apiKey 
         }));
       } catch (e) {
         console.error("Failed to parse settings", e);
@@ -31,12 +31,11 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
     setIsLoaded(true);
   }, [setSettings]);
 
-  // 2. On Change: Automatically persist non-sensitive settings
+  // 2. Persistence: Save settings on change
   useEffect(() => {
     if (isLoaded) {
       const { apiKey, ...otherSettings } = settings;
       localStorage.setItem('viralclip-settings', JSON.stringify(otherSettings));
-      // Specifically persist the API Key
       localStorage.setItem('gemini_api_key', apiKey);
     }
   }, [settings, isLoaded]);
@@ -45,8 +44,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
-  // Instant recognition check
-  const isKeyReady = settings.apiKey && settings.apiKey.length > 10;
+  // Instant readiness check for visual feedback
+  const isKeyReady = settings.apiKey && settings.apiKey.trim().length >= 10;
 
   return (
     <aside className="w-80 bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 flex flex-col h-full flex-none z-20 overflow-hidden">
@@ -60,12 +59,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
           <div className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-full ${isKeyReady ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
             <span className={`text-[10px] font-mono uppercase ${isKeyReady ? 'text-emerald-400' : 'text-red-400'}`}>
-              {isKeyReady ? 'Ready' : 'No Key'}
+              {isKeyReady ? 'READY' : 'NO KEY'}
             </span>
           </div>
         </div>
         
-        {/* Toggleable API Management Section */}
+        {/* Toggleable API Management */}
         <button 
           onClick={() => setShowConfig(!showConfig)}
           className={`w-full py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 border
@@ -105,15 +104,15 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
               </button>
             </div>
             
-            <p className="text-[9px] text-slate-500 leading-relaxed">
-              Keys are encrypted and saved locally in your browser. Never shared with our servers.
+            <p className="text-[9px] text-slate-500 leading-relaxed italic">
+              * Keys are encrypted and saved locally in your browser to maintain SaaS performance.
             </p>
           </div>
         )}
       </div>
 
       <div className="p-6 space-y-8 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-        {/* Model Selector */}
+        {/* Updated Model Selector with professional labels */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <Zap className="w-3 h-3 text-indigo-400" />
@@ -124,12 +123,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
             onChange={(e) => handleChange('model', e.target.value as AIModel)}
             className="w-full bg-black/60 text-slate-200 text-sm border border-white/10 rounded-xl p-3 appearance-none focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all hover:border-white/20"
           >
-            <option value="gemini-3-pro-preview">Gemini 3 Pro (Analysis)</option>
-            <option value="gemini-3-flash-preview">Gemini 3 Flash (Fast)</option>
+            <option value="gemini-3-pro-preview">Google Gemini 3 Pro Preview</option>
+            <option value="gemini-3-flash-preview">Google Gemini 3 Flash Preview</option>
           </select>
         </div>
 
-        {/* Context Input */}
+        {/* Viral Context Strategy */}
         <div className="space-y-3">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
             <Activity className="w-3 h-3 text-purple-400" />
@@ -139,7 +138,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
             value={settings.context}
             onChange={(e) => handleChange('context', e.target.value)}
             className="w-full h-32 bg-black/60 text-slate-200 text-sm border border-white/10 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all resize-none placeholder-slate-600 leading-relaxed"
-            placeholder="Target audience details..."
+            placeholder="Describe your niche, audience, and preferred tone for clipping strategy..."
           />
         </div>
 
@@ -151,12 +150,12 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
           </h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-              <span className="block text-[10px] text-slate-500 mb-1">Clips</span>
-              <span className="text-lg font-bold text-white">128</span>
+              <span className="block text-[10px] text-slate-500 mb-1">Total Clips</span>
+              <span className="text-lg font-bold text-white">0</span>
             </div>
             <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-              <span className="block text-[10px] text-slate-500 mb-1">Saved</span>
-              <span className="text-lg font-bold text-indigo-400">14h</span>
+              <span className="block text-[10px] text-slate-500 mb-1">Saved Time</span>
+              <span className="text-lg font-bold text-indigo-400">0h</span>
             </div>
           </div>
         </div>
@@ -165,9 +164,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
       <div className="p-6 border-t border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-500">
            <Clock className="w-3 h-3" />
-           <span className="text-[10px] font-mono uppercase tracking-tighter">Plan: Pro</span>
+           <span className="text-[10px] font-mono uppercase tracking-tighter">Plan: SaaS Pro</span>
         </div>
-        <span className="text-[10px] text-slate-700 font-mono">v1.4.0-secure</span>
+        <span className="text-[10px] text-slate-700 font-mono">v1.6.0-stable</span>
       </div>
     </aside>
   );

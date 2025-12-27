@@ -2,50 +2,56 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIModel, Clip } from "../types";
 
+/**
+ * Generates viral clips using the provided transcript and configuration.
+ * @param transcript - Long-form text content.
+ * @param apiKey - User-provided Gemini API key.
+ * @param model - Selected Gemini model ID.
+ * @param context - Niche specific context.
+ * @param youtubeUrl - Optional video source.
+ */
 export const generateViralClips = async (
   transcript: string,
+  apiKey: string,
   model: AIModel,
-  context: string,
+  context: string = "General",
   youtubeUrl?: string
 ): Promise<Clip[]> => {
   
   const systemPrompt = `You are a world-class viral video editor specializing in the [${context}] niche. 
-  Analyze the provided transcript and identify exactly 10 distinct, high-potential viral clips that have the highest potential to go viral on TikTok, Shorts, or Reels.
+  Analyze the provided transcript and identify exactly 10 distinct, high-potential viral clips for TikTok/Shorts/Reels.
   
-  Crucial Instructions:
-  - Ensure even the 9th and 10th clips are high quality; do not add filler.
-  - Do not repeat segments or overlap timeframes significantly.
-  - Cover different topics found in the text (e.g., Money, Relationships, Future, Controversy, Humor) to provide variety.
-  
-  For each clip, provide:
-  1. A catchy, clickbait-style title.
-  2. The start and end timestamps (e.g., "00:15", "01:30").
-  3. A viral score from 1-10 based on emotional hook, retention, and shareability.
-  4. A detailed reasoning explaining why this specific segment will hook viewers.
+  Instructions:
+  - Extract exactly 10 clips.
+  - No filler, high retention focus.
+  - Return JSON format only.`;
 
-  Return ONLY valid JSON.`;
-
-  if (model.startsWith('gemini')) {
-    return generateWithGemini(transcript, model, systemPrompt, youtubeUrl);
-  }
-  
-  throw new Error("Invalid model selected. Please use a Gemini model.");
+  // Explicitly utilizing the passed apiKey
+  return generateWithGemini(transcript, apiKey, model, systemPrompt, youtubeUrl);
 };
 
 async function generateWithGemini(
   transcript: string, 
+  apiKey: string,
   modelName: string, 
   systemPrompt: string,
   youtubeUrl?: string
 ): Promise<Clip[]> {
   try {
-    // Create fresh instance to ensure we use the most up-to-date API key
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Robust Initialization: Prioritize user key, fallback to environment key if available
+    const activeKey = apiKey || (process as any).env.API_KEY;
+    
+    if (!activeKey) {
+      throw new Error("Initialization Error: An API Key must be set in the sidebar config.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: activeKey });
     
     const contentText = youtubeUrl 
-      ? `YouTube Source: ${youtubeUrl}\n\nTranscript: ${transcript}`
+      ? `Source: ${youtubeUrl}\n\nTranscript: ${transcript}`
       : `Transcript: ${transcript}`;
 
+    // Following SDK coding guidelines: using ai.models.generateContent directly
     const response = await ai.models.generateContent({
       model: modelName,
       contents: contentText,
@@ -57,38 +63,31 @@ async function generateWithGemini(
           items: {
             type: Type.OBJECT,
             properties: {
-              title: { type: Type.STRING, description: "A catchy, clickbait-style title" },
-              start: { type: Type.STRING, description: "Start timestamp (e.g., 00:15)" },
-              end: { type: Type.STRING, description: "End timestamp (e.g., 01:30)" },
-              score: { type: Type.NUMBER, description: "Viral score from 1-10" },
-              reasoning: { type: Type.STRING, description: "Reasoning for viral potential" },
+              title: { type: Type.STRING },
+              start: { type: Type.STRING },
+              end: { type: Type.STRING },
+              score: { type: Type.NUMBER },
+              reasoning: { type: Type.STRING },
             },
-            required: ["title", "start", "end", "score", "reasoning"],
-            propertyOrdering: ["title", "start", "end", "score", "reasoning"]
+            required: ["title", "start", "end", "score", "reasoning"]
           }
         }
       }
     });
 
     if (!response.text) {
-      throw new Error("Gemini returned an empty response.");
+      throw new Error("Gemini returned an empty response. Check transcript length.");
     }
 
-    const jsonStr = response.text.trim();
-    const data = JSON.parse(jsonStr);
-    return data as Clip[];
+    return JSON.parse(response.text.trim()) as Clip[];
 
   } catch (error: any) {
-    console.error("Gemini API Error:", error);
+    console.error("Engine failure:", error);
     
-    // Automatic retry/key-reset if the entity is not found (stale key)
-    if (error.message?.includes("Requested entity was not found")) {
-      if (typeof (window as any).aistudio?.openSelectKey === 'function') {
-        await (window as any).aistudio.openSelectKey();
-        throw new Error("API session expired. Please retry with the updated key.");
-      }
+    if (error.message?.includes("API_KEY_INVALID")) {
+      throw new Error("Invalid API Key. Please verify your credentials in the Sidebar.");
     }
     
-    throw new Error(`Gemini Error: ${error.message || "Unknown error"}`);
+    throw new Error(`Generation Error: ${error.message || "Unknown error"}`);
   }
 }

@@ -16,27 +16,35 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>({
     model: 'gemini-3-pro-preview',
     context: 'General Audience',
-    apiKey: '' // Default empty key
+    apiKey: '' 
   });
 
   const handleGenerate = async () => {
-    if (!transcript.trim()) {
-      setError("Please enter a transcript.");
+    // 1. Critical Validation
+    if (!settings.apiKey || settings.apiKey.trim().length < 10) {
+      alert("Please enter your Gemini API Key in the sidebar first.");
+      setError("An API Key must be set to continue.");
       return;
     }
 
-    if (!settings.apiKey || settings.apiKey.length < 10) {
-      setError("Please configure your Gemini API Key in the sidebar.");
+    if (!transcript.trim()) {
+      setError("Please enter a transcript for analysis.");
       return;
     }
+
+    // 2. Logging for Verification (as requested)
+    console.log("Using Key:", settings.apiKey);
+    console.log("Using Model:", settings.model);
 
     setLoading(true);
     setError(null);
     setClips([]);
 
     try {
+      // 3. Service Call passing strictly bound apiKey state
       const results = await generateViralClips(
         transcript,
+        settings.apiKey,
         settings.model,
         settings.context,
         youtubeUrl
@@ -44,7 +52,7 @@ export default function App() {
       setClips(results);
     } catch (err: any) {
       setError(err.message || "Failed to generate clips.");
-      console.error(err);
+      console.error("Generation failed:", err);
     } finally {
       setLoading(false);
     }
@@ -163,7 +171,7 @@ export default function App() {
 
               {error && (
                 <div className="p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/20 rounded-xl flex items-center gap-3 text-red-200 text-sm shadow-lg">
-                  <span className="text-xl">🚨</span>
+                  <span className="text-xl text-red-400">🚨</span>
                   {error}
                 </div>
               )}
