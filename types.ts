@@ -26,4 +26,5 @@ export interface SettingsSidebarProps {
 export interface ResultsGridProps {
   clips: Clip[];
   loading: boolean;
+  youtubeUrl?: string;
 }

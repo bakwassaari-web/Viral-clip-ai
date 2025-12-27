@@ -25,7 +25,6 @@ export const generateViralClips = async (
 
   Return ONLY valid JSON.`;
 
-  // Fix: Model validation and exclusive use of generateWithGemini
   if (model.startsWith('gemini')) {
     return generateWithGemini(transcript, model, systemPrompt, youtubeUrl);
   }
@@ -40,14 +39,13 @@ async function generateWithGemini(
   youtubeUrl?: string
 ): Promise<Clip[]> {
   try {
-    // Fix: Always use process.env.API_KEY directly for Gemini initialization
+    // Create fresh instance to ensure we use the most up-to-date API key
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const contentText = youtubeUrl 
       ? `YouTube Source: ${youtubeUrl}\n\nTranscript: ${transcript}`
       : `Transcript: ${transcript}`;
 
-    // Fix: Use the direct generateContent pattern with property access for .text
     const response = await ai.models.generateContent({
       model: modelName,
       contents: contentText,
@@ -82,6 +80,15 @@ async function generateWithGemini(
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
+    
+    // Automatic retry/key-reset if the entity is not found (stale key)
+    if (error.message?.includes("Requested entity was not found")) {
+      if (typeof (window as any).aistudio?.openSelectKey === 'function') {
+        await (window as any).aistudio.openSelectKey();
+        throw new Error("API session expired. Please retry with the updated key.");
+      }
+    }
+    
     throw new Error(`Gemini Error: ${error.message || "Unknown error"}`);
   }
 }

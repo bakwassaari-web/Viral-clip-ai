@@ -29,7 +29,6 @@ export default function App() {
     setClips([]);
 
     try {
-      // Fix: No longer passing apiKey from state as it is now handled via process.env.API_KEY in the service
       const results = await generateViralClips(
         transcript,
         settings.model,
@@ -169,7 +168,7 @@ export default function App() {
                 </div>
               )}
 
-              <ResultsGrid clips={clips} loading={loading} />
+              <ResultsGrid clips={clips} loading={loading} youtubeUrl={youtubeUrl} />
               
             </div>
           </main>
