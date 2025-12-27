@@ -1,9 +1,8 @@
 import React from 'react';
 
 export type AIModel = 
-  | 'models/gemini-3-pro-preview' 
-  | 'models/gemini-2.5-flash' 
-  | 'claude-3-5-sonnet-20240620';
+  | 'gemini-3-pro-preview' 
+  | 'gemini-3-flash-preview';
 
 export interface Settings {
   model: AIModel;
@@ -22,8 +21,6 @@ export interface Clip {
 export interface SettingsSidebarProps {
   settings: Settings;
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
-  apiKey: string;
-  setApiKey: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export interface ResultsGridProps {

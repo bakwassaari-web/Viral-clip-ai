@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { SettingsSidebarProps, AIModel } from '../types';
 
-export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setSettings, apiKey, setApiKey }) => {
+export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setSettings }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
@@ -10,13 +11,8 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
-        if (parsed.model && (
-            parsed.model.includes('gemini') || 
-            parsed.model.includes('claude')
-        )) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { apiKey, ...validSettings } = parsed;
-            setSettings(prev => ({ ...prev, ...validSettings }));
+        if (parsed.model && parsed.model.startsWith('gemini')) {
+            setSettings(prev => ({ ...prev, ...parsed }));
         }
       } catch (e) {
         console.error("Failed to parse settings", e);
@@ -35,8 +31,6 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
   const handleChange = (field: keyof typeof settings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
-
-  const isGemini = settings.model.includes('gemini');
 
   return (
     <aside className="w-80 bg-slate-900/50 backdrop-blur-xl border-r border-white/10 flex flex-col h-full flex-none z-20">
@@ -63,9 +57,9 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
               onChange={(e) => handleChange('model', e.target.value as AIModel)}
               className="w-full bg-black/40 text-slate-200 text-sm border border-white/10 rounded-xl p-3 appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all hover:bg-black/50"
             >
-              <option className="bg-gray-900" value="models/gemini-3-pro-preview">Gemini 3 Pro Preview</option>
-              <option className="bg-gray-900" value="models/gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option className="bg-gray-900" value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</option>
+              {/* Correct model names per Gemini guidelines */}
+              <option className="bg-gray-900" value="gemini-3-pro-preview">Gemini 3 Pro Preview</option>
+              <option className="bg-gray-900" value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
@@ -73,22 +67,7 @@ export const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ settings, setS
           </div>
         </div>
 
-        {/* API Key Input */}
-        <div className="space-y-3">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            {isGemini ? 'Gemini API Key' : 'Claude API Key'}
-          </label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={isGemini ? "AIzaSy..." : "sk-ant-..."}
-            className="w-full bg-black/40 text-slate-200 text-sm border border-white/10 rounded-xl p-3 focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 outline-none transition-all placeholder-slate-600 hover:bg-black/50"
-          />
-          <p className="text-[10px] text-slate-500 font-medium">
-            Stored securely in memory for this session.
-          </p>
-        </div>
+        {/* API Key section removed per GenAI guidelines */}
 
         {/* Context Input */}
         <div className="space-y-3">

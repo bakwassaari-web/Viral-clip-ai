@@ -1,11 +1,12 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIModel, Clip } from "../types";
 
 export const generateViralClips = async (
   transcript: string,
-  apiKey: string,
   model: AIModel,
-  context: string
+  context: string,
+  youtubeUrl?: string
 ): Promise<Clip[]> => {
   
   const systemPrompt = `You are a world-class viral video editor specializing in the [${context}] niche. 
@@ -24,28 +25,32 @@ export const generateViralClips = async (
 
   Return ONLY valid JSON.`;
 
-  // Dynamic check for model type
-  if (model.includes('gemini')) {
-    return generateWithGemini(transcript, apiKey, model, systemPrompt);
-  } else if (model.includes('claude')) {
-    return generateWithClaude(transcript, apiKey, model, systemPrompt);
+  // Fix: Model validation and exclusive use of generateWithGemini
+  if (model.startsWith('gemini')) {
+    return generateWithGemini(transcript, model, systemPrompt, youtubeUrl);
   }
   
-  throw new Error("Invalid model selected");
+  throw new Error("Invalid model selected. Please use a Gemini model.");
 };
 
 async function generateWithGemini(
   transcript: string, 
-  apiKey: string,
   modelName: string, 
-  systemPrompt: string
+  systemPrompt: string,
+  youtubeUrl?: string
 ): Promise<Clip[]> {
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // Fix: Always use process.env.API_KEY directly for Gemini initialization
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
+    const contentText = youtubeUrl 
+      ? `YouTube Source: ${youtubeUrl}\n\nTranscript: ${transcript}`
+      : `Transcript: ${transcript}`;
+
+    // Fix: Use the direct generateContent pattern with property access for .text
     const response = await ai.models.generateContent({
       model: modelName,
-      contents: `Transcript: ${transcript}`,
+      contents: contentText,
       config: {
         systemInstruction: systemPrompt,
         responseMimeType: "application/json",
@@ -54,13 +59,14 @@ async function generateWithGemini(
           items: {
             type: Type.OBJECT,
             properties: {
-              title: { type: Type.STRING },
-              start: { type: Type.STRING },
-              end: { type: Type.STRING },
-              score: { type: Type.NUMBER },
-              reasoning: { type: Type.STRING },
+              title: { type: Type.STRING, description: "A catchy, clickbait-style title" },
+              start: { type: Type.STRING, description: "Start timestamp (e.g., 00:15)" },
+              end: { type: Type.STRING, description: "End timestamp (e.g., 01:30)" },
+              score: { type: Type.NUMBER, description: "Viral score from 1-10" },
+              reasoning: { type: Type.STRING, description: "Reasoning for viral potential" },
             },
-            required: ["title", "start", "end", "score", "reasoning"]
+            required: ["title", "start", "end", "score", "reasoning"],
+            propertyOrdering: ["title", "start", "end", "score", "reasoning"]
           }
         }
       }
@@ -70,68 +76,12 @@ async function generateWithGemini(
       throw new Error("Gemini returned an empty response.");
     }
 
-    const data = JSON.parse(response.text);
+    const jsonStr = response.text.trim();
+    const data = JSON.parse(jsonStr);
     return data as Clip[];
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
     throw new Error(`Gemini Error: ${error.message || "Unknown error"}`);
-  }
-}
-
-async function generateWithClaude(
-  transcript: string, 
-  apiKey: string,
-  modelName: string, 
-  systemPrompt: string
-): Promise<Clip[]> {
-  // NOTE: This uses a direct client-side fetch to Anthropic.
-  
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        // 'dangerously-allow-browser': 'true' // Sometimes required for client-side testing tools
-      },
-      body: JSON.stringify({
-        model: modelName,
-        max_tokens: 4000, // Increased max_tokens to accommodate 10 clips
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: `Here is the transcript to analyze:\n\n${transcript}\n\nReturn the JSON array of clips.` }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      if (response.status === 401) throw new Error("Invalid Anthropic API Key.");
-      if (errData.error?.message?.includes("CORS")) {
-        throw new Error("CORS Error: Anthropic does not allow browser requests. Please use a proxy or backend.");
-      }
-      throw new Error(`Anthropic Error: ${errData.error?.message || response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    // Parse the content string from Claude which might include text before/after JSON
-    const contentText = data.content[0]?.text;
-    if (!contentText) throw new Error("Claude returned empty content.");
-
-    // Simple extraction of JSON array if Claude adds extra text
-    const jsonMatch = contentText.match(/\[[\s\S]*\]/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : contentText;
-
-    return JSON.parse(jsonStr) as Clip[];
-
-  } catch (error: any) {
-    console.error("Claude API Error:", error);
-    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-      throw new Error("Network Error: Likely a CORS issue accessing Anthropic directly from browser. Use a CORS extension for testing.");
-    }
-    throw error;
   }
 }
